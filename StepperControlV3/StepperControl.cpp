@@ -1,45 +1,22 @@
-// StepperControl.cpp
-#include "StepperControl.h"
 #include <Arduino.h>
+#include "StepperControl.h"
 
-const float beltPitch = 2.0;
-
-const int motorSteps = 200;
-const int microstepsX = 4;
-const int microstepsY = 16;
-const int pulleyTeeth = 20;
-
-const float stepsPerMMX = (motorSteps * microstepsX) / (pulleyTeeth * beltPitch);
-const float stepsPerMMY = (motorSteps * microstepsY) / (pulleyTeeth * beltPitch);
-
-Stepper stepperX = {"X", 24, 22, 6, stepsPerMMX, 0, 65.0};
-Stepper stepperY = {"Y", 5, 6, 7, stepsPerMMY, 0, 65.0};
-
-void setupSteppers() {
-  pinMode(stepperX.stepPin, OUTPUT);
-  pinMode(stepperX.dirPin, OUTPUT);
-  pinMode(stepperX.limitSwitchPin, INPUT_PULLUP);
-
-  pinMode(stepperY.stepPin, OUTPUT);
-  pinMode(stepperY.dirPin, OUTPUT);
-  pinMode(stepperY.limitSwitchPin, INPUT_PULLUP);
-}
-
-void moveStepper(Stepper& motor, bool direction, int steps, int speedMicros, bool ignoreLimits) {
-  int newPosition = direction 
-    ? motor.currentPositionSteps + steps 
-    : motor.currentPositionSteps - steps;
+void moveStepper(Stepper& motor, bool directionBackward, int steps, int speedMicros, bool ignoreLimits) {
+  int newPosition = directionBackward
+    ? motor.currentPositionSteps - steps
+    : motor.currentPositionSteps + steps;
 
   int maxSteps = motor.maxPositionMM * motor.stepsPerMM;
 
   if (!ignoreLimits && (newPosition < 0 || newPosition > maxSteps)) {
     Serial.print("Error: ");
     Serial.print(motor.name);
-    Serial.println(" move exceeds travel limits!");
+    Serial.println(" movement out of bounds.");
     return;
   }
 
-  digitalWrite(motor.dirPin, direction);
+  digitalWrite(motor.dirPin, directionBackward ? HIGH : LOW);
+
   for (int i = 0; i < steps; i++) {
     digitalWrite(motor.stepPin, HIGH);
     delayMicroseconds(speedMicros);
@@ -51,29 +28,39 @@ void moveStepper(Stepper& motor, bool direction, int steps, int speedMicros, boo
     motor.currentPositionSteps = newPosition;
 
   Serial.print(motor.name);
-  Serial.print(" new position = ");
-  Serial.print(motor.currentPositionSteps / motor.stepsPerMM);
-  Serial.println(" mm");
+  Serial.print(" position: ");
+  Serial.print(motor.currentPositionSteps);
+  Serial.print(" steps (");
+  Serial.print(motor.currentPositionSteps / motor.stepsPerMM, 2);
+  Serial.println(" mm)");
 }
 
-void moveStepperMM(Stepper& motor, bool direction, float distanceMM, int speedMicros) {
+void moveStepperMM(Stepper& motor, bool directionBackward, float distanceMM, int speedMicros) {
   int stepsToMove = distanceMM * motor.stepsPerMM;
-  moveStepper(motor, direction, stepsToMove, speedMicros);
+  moveStepper(motor, directionBackward, stepsToMove, speedMicros);
 }
 
 void homeStepper(Stepper& motor) {
   Serial.print("Homing ");
   Serial.println(motor.name);
 
-  while (digitalRead(motor.limitSwitchPin) != 0)
-    moveStepper(motor, true, 1, 1000, true);
+  // Move backwards until limit switch is hit
+  while (digitalRead(motor.limitSwitchPin) != LOW) {
+    digitalWrite(motor.dirPin, HIGH); // HIGH = backward
+    digitalWrite(motor.stepPin, HIGH);
+    delayMicroseconds(1000);
+    digitalWrite(motor.stepPin, LOW);
+    delayMicroseconds(1000);
+  }
 
-  delay(50);
-  moveStepper(motor, false, 50, 500, true);
+  delay(50); // Debounce
+  delay(100);
 
-  Serial.print("Homing complete, ");
+  moveStepper(motor, false, 20, 500, true); // Move forward a bit to release
+
+  motor.currentPositionSteps = 0;
+
+  Serial.print("Homing complete. ");
   Serial.print(motor.name);
-  Serial.println(" = 50 steps");
-
-  motor.currentPositionSteps = 50;
+  Serial.println(" position set to 0 mm.");
 }

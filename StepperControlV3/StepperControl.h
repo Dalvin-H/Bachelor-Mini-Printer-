@@ -1,4 +1,3 @@
-// StepperControl.h
 #ifndef STEPPER_CONTROL_H
 #define STEPPER_CONTROL_H
 
@@ -12,12 +11,8 @@ struct Stepper {
   float maxPositionMM;
 };
 
-extern Stepper stepperX;
-extern Stepper stepperY;
-
-void setupSteppers();
+void moveStepper(Stepper& motor, bool directionBackward, int steps, int speedMicros, bool ignoreLimits = false);
+void moveStepperMM(Stepper& motor, bool directionBackward, float distanceMM, int speedMicros);
 void homeStepper(Stepper& motor);
-void moveStepper(Stepper& motor, bool direction, int steps, int speedMicros, bool ignoreLimits = false);
-void moveStepperMM(Stepper& motor, bool direction, float distanceMM, int speedMicros);
 
 #endif
