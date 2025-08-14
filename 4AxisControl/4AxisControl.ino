@@ -13,6 +13,7 @@ const float beltPitch = 2.0;
 const int pulleyTeeth = 20;
 const int microSteps = 4;       //check M0, M1, M2
 const int motorRevSteps = 200;  //number of steps for 1 revolution
+int speedMicros = 500;
 
 // X-Stepper motor configuration:
 const int stepPinX = 28;
@@ -396,7 +397,11 @@ void excecuteTargetFile(File& target) {
       if (idx != -1)
         stepsE = line.substring(idx + 1).toInt();
 
-      moveXYZE(stepsX, stepsY, stepsZ, stepsE, 250);  // 500 = speedMicros
+      idx = line.indexOf('S');
+      if (idx != -1)
+        speedMicros = line.substring(idx + 1).toInt();
+      
+      moveXYZE(stepsX, stepsY, stepsZ, stepsE, speedMicros);
     }
 
     else if (line.startsWith("G28")) {
@@ -416,7 +421,7 @@ void excecuteTargetFile(File& target) {
 
 void homeAllAxes() {
   homeAxes(stepperX);
-  //homeAxes(stepperY);
+  homeAxes(stepperY);
   //homeAxes(stepperZ);
 }
 
