@@ -17,7 +17,7 @@ const float beltPitch = 2.0;
 const int pulleyTeeth = 20;
 const int microSteps = 4;       //check M0, M1, M2
 const int motorRevSteps = 200;  //number of steps for 1 revolution
-int speedMicros = 500;
+int speedMicros;
 
 // X-Stepper motor configuration:
 const int stepPinX = 28;
@@ -88,7 +88,6 @@ void setup() {
     return;
   }
   Serial.println("SD card ready.");
-  
 }
 
 void loop() {
@@ -141,7 +140,7 @@ void selectFile() {
 
   // Check for matching TXT file
   Serial.println("Searching for identical TXT file...");
-  fileNameIdentical = false; // reset flag
+  fileNameIdentical = false;  // reset flag
   root = SD.open("/");
   while (true) {
     entry = root.openNextFile();
@@ -188,7 +187,7 @@ void selectFile() {
         if (newTarget) {
           newTarget.println(sourceID);
           newTarget.close();
-          processGCODE((char*) gcodeFiles[selectedIndex].c_str(), (char*) txtFileName.c_str());
+          processGCODE((char*)gcodeFiles[selectedIndex].c_str(), (char*)txtFileName.c_str());
         }
       }
     } else {
@@ -206,7 +205,7 @@ void selectFile() {
         newTarget.println(sourceID);
       }
       newTarget.close();
-      processGCODE((char*) gcodeFiles[selectedIndex].c_str(), (char*) txtFileName.c_str());
+      processGCODE((char*)gcodeFiles[selectedIndex].c_str(), (char*)txtFileName.c_str());
     }
   }
 
@@ -232,9 +231,9 @@ String readFirstLine(File file) {
 
 void pulseStepper(Stepper& motor, int speedMicros) {
   digitalWrite(motor.stepPin, HIGH);
-  delayMicroseconds(speedMicros);
+  delayMicroseconds(10);
   digitalWrite(motor.stepPin, LOW);
-  delayMicroseconds(speedMicros);
+  delayMicroseconds(speedMicros - 10);
 }
 
 void initializeStepper(Stepper& motor) {
@@ -300,7 +299,7 @@ int calculateSteps(float currentPos, float targetPos, Stepper& motor) {
   if (targetPos < currentPos) steps = -steps;
   return steps;
 }
-void translateG(float parsedX, float parsedY, float parsedZ, float parsedE, File& target)
+void translateG(float parsedX, float parsedY, float parsedZ, float parsedE, float parsedS, File& target)
 //Method for translating the G command line in gcode
 //by parsing the values, calculating steps and writing to a translated file
 {
@@ -358,6 +357,13 @@ void translateG(float parsedX, float parsedY, float parsedZ, float parsedE, File
     }
   }
 
+  if (!isnan(parsedS)) {
+    speedMicros = (1000000 / ((parsedS / 60) * stepsPerMMX));
+    char temp[12];
+    sprintf(temp, "S%d", speedMicros);
+    strcat(line, temp);
+  }
+
   if (moved) {
     target.println(line);
   }
@@ -368,6 +374,7 @@ void parseGcodeLine(File& source, File& target) {
   float y = NAN;
   float z = NAN;
   float e = NAN;
+  float s = NAN;
 
   String line = source.readStringUntil('\n');
   line.trim();
@@ -375,32 +382,51 @@ void parseGcodeLine(File& source, File& target) {
   String CMD = (spaceIndex > 0) ? line.substring(0, spaceIndex) : line;
 
   if (CMD == "G0" || CMD == "G1") {
-    //Serial.print(CMD);
-    //Serial.println(" line detected");
+    Serial.print(CMD);
+    Serial.print(" line detected including: ");
 
     int index;
     index = line.indexOf('X');
-    if (index != -1) x = line.substring(index + 1).toFloat();
+    if (index != -1) {
+      x = line.substring(index + 1).toFloat();
+      Serial.print("X ");
+    }
 
     index = line.indexOf('Y');
-    if (index != -1) y = line.substring(index + 1).toFloat();
+    if (index != -1) {
+      y = line.substring(index + 1).toFloat();
+      Serial.print("Y ");
+    }
 
     index = line.indexOf('Z');
-    if (index != -1) z = line.substring(index + 1).toFloat();
-
+    if (index != -1) {
+      z = line.substring(index + 1).toFloat();
+      Serial.print("Z ");
+    }
     index = line.indexOf('E');
-    if (index != -1) e = line.substring(index + 1).toFloat();
+    if (index != -1) {
+      e = line.substring(index + 1).toFloat();
+      Serial.print("E ");
+    }
 
-    translateG(x, y, z, e, target);
+    index = line.indexOf('F');
+    if (index != -1) {
+      s = line.substring(index + 1).toFloat();
+      Serial.print("F ");
+    }
+
+    Serial.println("");
+
+    translateG(x, y, z, e, s, target);
 
   } else if (CMD == "G28") {
     target.println(CMD);
-    //Serial.println("G28 line detected");
+    Serial.println("G28 line detected");
   } else if (CMD == "M84") {
     target.println(CMD);
-    //Serial.println("M84 line detected");
+    Serial.println("M84 line detected");
   } else {
-    //Serial.println("no matching start code... ignoring line");
+    Serial.println("no matching start code... ignoring line");
   }
 }
 
@@ -461,8 +487,7 @@ void excecuteTargetFile(File& target) {
     if (line.startsWith("M84")) {
       ableAllSteppers(1);
       M84Active = true;
-    } 
-    else if (line.startsWith("M")) {
+    } else if (line.startsWith("M")) {
       int stepsX = 0, stepsY = 0, stepsZ = 0, stepsE = 0;
 
       int idx = line.indexOf('X');
@@ -486,12 +511,10 @@ void excecuteTargetFile(File& target) {
         speedMicros = line.substring(idx + 1).toInt();
 
       moveXYZE(stepsX, stepsY, stepsZ, stepsE, speedMicros);
-    }
-    else if (line.startsWith("G28")) {
+    } else if (line.startsWith("G28")) {
       Serial.println("Homing all axes...");
       homeAllAxes();
-    }
-    else {
+    } else {
       Serial.print("Unknown command in target: ");
       Serial.println(line);
     }
