@@ -67,10 +67,10 @@ public:
 
       translateG(x, y, z, e, s, target);
 
-    } else if (CMD == "G28") {
+    } else if (CMD == "G28") { //home all axes
       target.println(CMD);
       Serial.println("G28 line detected");
-    } else if (CMD == "M84") {
+    } else if (CMD == "M84") { //enable all steppers
       target.println(CMD);
       Serial.println("M84 line detected");
     } else {
