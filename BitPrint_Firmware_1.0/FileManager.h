@@ -76,10 +76,10 @@ public:
     baseGCO = gcodeFiles[selectedIndex];
     baseGCO.remove(baseGCO.lastIndexOf('.'));  // strip extension
 
-    checkMatchingTxtFile(baseGCO);
+    checkMatchingTxtFile();
   }
 
-  void checkMatchingTxtFile(const String& baseName) {
+  void checkMatchingTxtFile() {
     // Check for matching TXT file
     Serial.println("Searching for identical TXT file...");
     fileNameIdentical = false;  // reset flag
