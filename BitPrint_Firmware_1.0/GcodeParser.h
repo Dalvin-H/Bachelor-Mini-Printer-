@@ -115,8 +115,9 @@ public:
     }
 
     if (!isnan(parsedZ)) {
-      stepsZ = planner.calculateSteps(stepperZ, stepperZ.getCurrentPos(), parsedZ);
-      stepperZ.setCurrentPos(parsedZ);
+      float compensatedZ = parsedZ + zOffset;
+      stepsZ = planner.calculateSteps(stepperZ, stepperZ.getCurrentPos(), compensatedZ);
+      stepperZ.setCurrentPos(compensatedZ);
       if (stepsZ != 0) {
         char temp[12];
         sprintf(temp, "Z%d", stepsZ);

@@ -37,6 +37,7 @@ const int dirPinZ = 30;
 const int enablePinZ = 9;
 const int limitSwitchZ = 40;
 const float stepsPerMMZ = (motorRevSteps * microSteps) / (pulleyTeeth * beltPitch);
+float zOffset = 0,0;
 
 // E-Stepper motor configuration:
 const int stepPinE = 50;
