@@ -5,8 +5,6 @@
 
 //SD configuration
 const int chipSelect = 53;
-//const char* sourceFile = "file.GCO";  // File to read
-//const char* targetFile = "copy.txt";  // File to create and write
 bool fileNameIdentical = false;
 String baseGCO;  // keep selected base filename
 
